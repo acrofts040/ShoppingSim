@@ -32,6 +32,7 @@ public class Agent extends SupermarketComponentImpl {
 	MoveStatus status = MoveStatus.PENDING;
 
 
+	// Function that gets the user a gart
 	void getCart(Observation obs) {
 		for (int i = 0; i < 15; i++) {
 			goSouth();
@@ -56,6 +57,7 @@ public class Agent extends SupermarketComponentImpl {
 				goNorth();
 			}
 
+			// special instructions for milk aisle
 			if (obs.players[0].shopping_list[shoppingListIndex].contains("milk")) {
 				goNorth();
 				goNorth();
@@ -76,8 +78,6 @@ public class Agent extends SupermarketComponentImpl {
 				goWest();
 			}
 
-			
-
 			// put item in shopping cart
 			interactWithObject();
 
@@ -95,19 +95,23 @@ public class Agent extends SupermarketComponentImpl {
 		move(obs, xComp, yComp);
 	}
 
+	// In charge of moving person out of aisle after they get an item
 	void moveOutOfAisle(Observation obs, int goalIndex) {
+		// Goes east if they need to get to the counters
 		if (goalType == "counters") {
 			if (obs.inRearAisleHub(0)) {
 				state = State.GETTING_GROCERY;
 			} else {
 				goEast();
 			}
+		// Goes west if they need to go to the registers
 		} else if (goalType == "registers") {
 			if (obs.inAisleHub(0)) {
 				state = State.GETTING_GROCERY;
 			} else {
 				goWest();
 			}
+		// Goes east or west depending on which way is faster for exiting aisle
 		} else if (goalType == "shelves") {
 			double yComp = obs.players[0].position[1] - (obs.shelves[goalIndex].position[1] + (.5 * obs.shelves[goalIndex].height));
 			if (obs.inRearAisleHub(0) || obs.inAisleHub(0)) {
@@ -119,7 +123,8 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 	}
-    
+	
+    //This will go to a counter and get a specific item from the counter. This function assumes you are southwest of the counter
 	void getCounterItem(Observation obs, int goalIndex) {
 		double xComp = obs.players[0].position[0] - obs.counters[goalIndex].position[0] + .7;
 		double yComp = obs.players[0].position[1] - (obs.counters[goalIndex].position[1] + (.5 * obs.counters[goalIndex].height));
@@ -131,6 +136,7 @@ public class Agent extends SupermarketComponentImpl {
 				goNorth();
 			}
 
+   			// move user to the counter
 			for (int i = 0; i < 5; i++) {
 				goEast();
 			}
@@ -160,6 +166,10 @@ public class Agent extends SupermarketComponentImpl {
 			goEast();
 			toggleShoppingCart();
 
+			for (int i = 0; i < 4; i++) {
+				goWest();
+			}
+
 			state = State.GETTING_GROCERY;
 			status = MoveStatus.PENDING;
 			shoppingListIndex += 1;
@@ -168,22 +178,43 @@ public class Agent extends SupermarketComponentImpl {
 		move(obs, xComp, yComp);
 	}
 
+	// Deals with instruction on going to a register
 	void goToRegister(Observation obs, int goalIndex) {
-		double xComp = obs.players[0].position[0] - (obs.registers[goalIndex].position[0] + obs.registers[goalIndex].width);
-		double yComp = obs.players[0].position[1] - (obs.registers[goalIndex].position[1] + obs.registers[goalIndex].height);
+		double xComp = obs.players[0].position[0] - (obs.registers[goalIndex].position[0] + (obs.registers[goalIndex].width * .5));
+		double yComp = obs.players[0].position[1] - (obs.registers[goalIndex].position[1] + (obs.registers[goalIndex].height * .75));
 		if (status == MoveStatus.SUCCEEDED) {
 			toggleShoppingCart();
 			goNorth();
-			
-			
+			interactWithObject();
+			interactWithObject();
+			goWest();
+			toggleShoppingCart();
+			state = State.LEAVE;
+			status = MoveStatus.PENDING;
 			return;
 		}
-		if (!obs.inAisleHub(0)) {
-			goWest();
-		}
-		move(obs, xComp, yComp);
+		moveToRegister(xComp, yComp);
 	}
 
+	// Movement for the register
+	void moveToRegister (double xComp, double yComp) {
+		if (yComp > .70) {
+			goNorth();
+		} else if (yComp < .60) {
+			goSouth();
+		} else if (xComp < -.8) {
+			goEast();
+		} else if (xComp > .5) {
+			goWest();
+		} else {
+			status = MoveStatus.SUCCEEDED;
+			return;
+		}
+
+		status = MoveStatus.PENDING;
+	}
+
+	// Movement function that moves depending on difference in x and y positions of person and goal
 	void move (Observation obs, double xComp, double yComp) {
 		double playery = obs.players[0].position[1];
 		if (yComp > .75 && playery > 3.05) {
@@ -223,16 +254,11 @@ public class Agent extends SupermarketComponentImpl {
 		if (shoppingListIndex < obs.players[0].shopping_list.length) {
 			goalLocation = obs.players[0].shopping_list[shoppingListIndex];
 		} else {
-			if (state != State.MOVE_OUT_OF_AISLE) {
+			if (state != State.MOVE_OUT_OF_AISLE && state != State.LEAVE) {
 				goalLocation = "checkout";
 				state = State.MOVE_TO_CHECKOUT;
 			}
 		}
-		// if (state == State.GETTING_GROCERY) {
-		// 	goalLocation = "checkout";
-		// 	state = State.MOVE_TO_CHECKOUT;
-		// 	status = MoveStatus.PENDING;
-		// }
 		
 		for(int i = 0; i < obs.shelves.length; i++) {
 			if (obs.shelves[i].food.equals(goalLocation)) {
@@ -269,7 +295,8 @@ public class Agent extends SupermarketComponentImpl {
 			moveOutOfAisle(obs, goalIndex);
 		} else if (state == State.MOVE_TO_CHECKOUT) {
 			goToRegister(obs, goalIndex);
+		} else if (state == State.LEAVE) {
+			goWest();
 		}
-		
 	}
 }
