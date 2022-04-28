@@ -6,6 +6,14 @@ Developers: [Teah Markstone](https://github.com/teahmarkstone/) and [Daniel Kase
 
 The agent plays as a customer in a supermarket, shopping for food items on their shopping list.  The simulation can be run with keyboard input, as an OpenAI gym environment, or from non-Python environments using a socket.
 
+
+
+# My Contribution
+
+ Me and my team added the Agent.java file. When run, our agent will shop in the supermarket and attempt to do so without violating common norms of
+ supermarket courtesy.
+
+
 ## Dependencies:
 * python 3.7+
 * pygame 2.0.0+
